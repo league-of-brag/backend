@@ -55,6 +55,7 @@ func userHandler(request: Request,
                  route: UserRoute) async throws -> AsyncResponseEncodable {
     switch route {
     case .championMastery:
+        let champions = try await fetchChampions(request: request)
         let serverRegion: ServerRegion = .europeWest
         let summoner = try await fetchSummoner(serverRegion: serverRegion, 
                                                summonerName: "andygägä",
@@ -62,7 +63,14 @@ func userHandler(request: Request,
         let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
                                                          puuid: summoner.puuid,
                                                          request: request)
-        return masteries
+        
+        let championMasteries: [ChampionMastery] = try masteries.map { mastery in
+            guard let champion: ChampionDTO = champions.data[mastery.championId] else {
+                throw Abort(.internalServerError)
+            }
+            return ChampionMastery(champion: champion, championMastery: mastery)
+        }
+        return championMasteries
     }
 }
 
@@ -87,7 +95,9 @@ func fetchSummoner(serverRegion: ServerRegion,
         throw Abort(response.status)
     }
     
-    let json = try response.content.decode(SummonerDTO.self)
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .millisecondsSince1970
+    let json = try response.content.decode(SummonerDTO.self, using: decoder)
     return json
 }
 
@@ -109,10 +119,22 @@ func fetchChampionMasteries(serverRegion: ServerRegion,
     guard response.status.isValid() else {
         throw Abort(response.status)
     }
-    let json = try response.content.decode([ChampionMasteryDTO].self)
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .millisecondsSince1970
+    let json = try response.content.decode([ChampionMasteryDTO].self, using: decoder)
     return json
 }
 
 func baseURL(for serverRegion: ServerRegion) -> String {
     return "https://\(serverRegion.rawValue.lowercased()).api.riotgames.com"
+}
+
+func fetchChampions(request: Request) async throws -> ChampionsResponse {
+    let requestURI: URI = "https://ddragon.leagueoflegends.com/cdn/13.24.1/data/en_US/champion.json"
+    let response = try await request.client.get(requestURI)
+    guard response.status.isValid() else {
+        throw Abort(response.status)
+    }
+    let json = try response.content.decode(ChampionsResponse.self)
+    return json
 }

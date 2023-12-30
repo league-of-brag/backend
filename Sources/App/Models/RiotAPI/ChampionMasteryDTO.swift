@@ -16,9 +16,9 @@ struct ChampionMasteryDTO: Content {
     /// Is chest granted for this champion or not in current season.
     let chestGranted: Bool
     /// Champion ID for this entry.
-    let championId: Int64
+    let championId: ChampionID
     /// Last time this champion was played by this player - in Unix milliseconds time format.
-    let lastPlayTime: Int64
+    let lastPlayTime: Date
     /// Champion level for specified player and champion combination.
     let championLevel: Int
     /// Summoner ID for this entry. (Encrypted)
