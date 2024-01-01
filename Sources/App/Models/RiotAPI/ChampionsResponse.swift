@@ -55,7 +55,7 @@ struct ChampionDTO: Content {
     let blurb: String
     let info: Info
     let image: Image
-    let tags: [String]
+    let tags: [ChampionClass]
     let partype: String
     let stats: [String: Double]
     
@@ -105,7 +105,7 @@ struct ChampionDTO: Content {
         self.blurb = try container.decode(String.self, forKey: .blurb)
         self.info = try container.decode(Info.self, forKey: .info)
         self.image = try container.decode(Image.self, forKey: .image)
-        self.tags = try container.decode([String].self, forKey: .tags)
+        self.tags = try container.decode([ChampionClass].self, forKey: .tags)
         self.partype = try container.decode(String.self, forKey: .partype)
         self.stats = try container.decode([String : Double].self, forKey: .stats)
     }

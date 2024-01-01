@@ -1,5 +1,5 @@
 //
-//  CompareResponse.swift
+//  ChampionCompareResponse.swift
 //
 //
 //  Created by Andreas Hård on 2024-01-01.
@@ -8,7 +8,7 @@
 import Foundation
 import Vapor
 
-struct CompareResponse: Content {
+struct ChampionCompareResponse: Content {
     let championInfo: ChampionInfo
     let results: [SummonerMastery]
 }
@@ -44,6 +44,9 @@ struct MasteryInfo: Content {
     /// Is chest granted for this champion or not in current season.
     let chestGranted: Bool
     /// Last time this champion was played by this player - in Unix milliseconds time format.
+    /// Champion ID for this entry.
+    let championId: ChampionID
+    /// Last time this champion was played by this player - in Unix milliseconds time format.
     let lastPlayTime: Date
     /// Champion level for specified player and champion combination.
     let championLevel: Int
@@ -57,6 +60,7 @@ struct MasteryInfo: Content {
     init(mastery: ChampionMasteryDTO) {
         self.championPointsUntilNextLevel = mastery.championPointsUntilNextLevel
         self.chestGranted = mastery.chestGranted
+        self.championId = mastery.championId
         self.lastPlayTime = mastery.lastPlayTime
         self.championLevel = mastery.championLevel
         self.championPoints = mastery.championPoints
@@ -68,7 +72,7 @@ struct MasteryInfo: Content {
 struct ChampionInfo: Content {
     let id: ChampionID
     let name: String
-    let tags: [String]
+    let tags: [ChampionClass]
     let imageURL: URL
     let splashImageURL: URL
     

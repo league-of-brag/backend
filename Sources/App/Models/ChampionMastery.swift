@@ -18,7 +18,7 @@ struct ChampionMastery: Content {
     let tokensEarned: Int
     let tokensEarnedOutOfMax: String
     let lastTimePlayed: Date
-    let tags: [String]
+    let tags: [ChampionClass]
     let imageURL: URL
     let splashImageURL: URL
     

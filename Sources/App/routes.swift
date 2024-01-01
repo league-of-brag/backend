@@ -17,13 +17,25 @@ func routes(_ app: Application) throws {
     }
     
     /// Example URL: https://domain-example.invalid/region/compare-champion
-    app.post("compare-champion") { request -> CompareResponse in
+    app.post("compare", "champion") { request -> ChampionCompareResponse in
         do {
             let requestBody = try request.content.decode(ChampionCompareRequest.self)
-            return try await compareHandler(request: request,
-                                            serverRegion: requestBody.serverRegion,
-                                            championId: requestBody.championId,
-                                            summonerNames: requestBody.summonerNames)
+            return try await championCompareHandler(request: request,
+                                                    serverRegion: requestBody.serverRegion,
+                                                    championId: requestBody.championId,
+                                                    summonerNames: requestBody.summonerNames)
+        } catch {
+            throw Abort(.badRequest)
+        }
+    }
+    
+    app.post("compare", "champion-class") { request -> ChampionClassCompareResponse in
+        do {
+            let requestBody = try request.content.decode(ChampionClassCompareRequest.self)
+            return try await championClassCompareHandler(request: request,
+                                                         serverRegion: requestBody.serverRegion,
+                                                         championClass: requestBody.championClass,
+                                                         summonerNames: requestBody.summonerNames)
         } catch {
             throw Abort(.badRequest)
         }
@@ -52,18 +64,17 @@ func summonerChampionMasteriesHandler(request: Request,
     return championMasteries
 }
 
-// MARK: Request handlers
-
-func compareHandler(request: Request,
-                    serverRegion: ServerRegion,
-                    championId: ChampionID,
-                    summonerNames: [String]) async throws -> CompareResponse {
+func championCompareHandler(request: Request,
+                            serverRegion: ServerRegion,
+                            championId: ChampionID,
+                            summonerNames: [String]) async throws -> ChampionCompareResponse {
     let champions = try await fetchChampions(request: request)
     guard let targetChampion = champions.data[championId] else {
         throw Abort(.internalServerError)
     }
     
     var results: [SummonerMastery] = []
+#warning("This should be run in parallel")
     for summonerName in summonerNames {
         let summoner = try await fetchSummoner(serverRegion: serverRegion,
                                                summonerName: summonerName,
@@ -76,7 +87,37 @@ func compareHandler(request: Request,
         results.append(result)
     }
     let championInfo = ChampionInfo(champion: targetChampion)
-    let response = CompareResponse(championInfo: championInfo, results: results)
+    let response = ChampionCompareResponse(championInfo: championInfo, results: results)
+    return response
+}
+
+func championClassCompareHandler(request: Request,
+                                 serverRegion: ServerRegion,
+                                 championClass: ChampionClass,
+                                 summonerNames: [String]) async throws -> ChampionClassCompareResponse {
+    let champions = try await fetchChampions(request: request)
+    let filteredChampions: [ChampionDTO] = Array(champions.data.values).filter { $0.tags.contains(championClass) }
+    
+    guard filteredChampions.count > 0 else {
+        throw Abort(.internalServerError)
+    }
+    
+    var results: [SummonerMasteries] = []
+#warning("This should be run in parallel")
+    for summonerName in summonerNames {
+        let summoner = try await fetchSummoner(serverRegion: serverRegion,
+                                               summonerName: summonerName,
+                                               request: request)
+        let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
+                                                         puuid: summoner.puuid,
+                                                         request: request)
+        let filteredMasteries = masteries.filter { masteryChampion in
+            return filteredChampions.contains { $0.key == masteryChampion.championId }
+        }
+        let result = SummonerMasteries(summoner: summoner, masteries: filteredMasteries)
+        results.append(result)
+    }
+    let response = ChampionClassCompareResponse(championClass: championClass, results: results)
     return response
 }
 
