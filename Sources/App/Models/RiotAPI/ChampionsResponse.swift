@@ -73,6 +73,12 @@ struct ChampionDTO: Content {
             return name
         }
     }
+    var imageURL: URL {
+        URL(string: "https://ddragon.leagueoflegends.com/cdn/13.24.1/img/champion/\(imageURLFormattedName).png")!
+    }
+    var splashImageURL: URL {
+        URL(string: "https://ddragon.leagueoflegends.com/cdn/img/champion/loading/\(imageURLFormattedName)_0.jpg")!
+    }
     
     enum CodingKeys: CodingKey {
         case version

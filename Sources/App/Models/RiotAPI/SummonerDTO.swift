@@ -23,4 +23,8 @@ struct SummonerDTO: Content {
     let puuid: String
     /// Summoner level associated with the summoner.
     let summonerLevel: Int64
+    
+    var profileIconImageURL: URL {
+        return URL(string: "https://ddragon.leagueoflegends.com/cdn/13.24.1/img/profileicon/\(profileIconId).png")!
+    }
 }

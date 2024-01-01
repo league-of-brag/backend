@@ -3,16 +3,30 @@ import Vapor
 // MARK: Routes
 
 func routes(_ app: Application) throws {
-    app.get("region", ":serverRegion", "summoner", ":summonerName", "champion-masteries") { req -> [ChampionMastery] in
+    /// Example URL: https://domain-example.invalid/region/euw1/summoner/caps/champion-masteries
+    app.get("region", ":serverRegion", "summoner", ":summonerName", "champion-masteries") { request -> [ChampionMastery] in
         guard
-            let serverRegion = ServerRegion(rawValue: req.parameters.get("serverRegion", as: String.self) ?? ""),
-            let summonerName: String = req.parameters.get("summonerName", as: String.self)
+            let serverRegion = ServerRegion(rawValue: request.parameters.get("serverRegion", as: String.self) ?? ""),
+            let summonerName: String = request.parameters.get("summonerName", as: String.self)
         else {
             throw Abort(.badRequest)
         }
-        return try await summonerChampionMasteriesHandler(request: req,
+        return try await summonerChampionMasteriesHandler(request: request,
                                                           serverRegion: serverRegion,
                                                           summonerName: summonerName)
+    }
+    
+    /// Example URL: https://domain-example.invalid/region/compare-champion
+    app.post("compare-champion") { request -> CompareResponse in
+        do {
+            let requestBody = try request.content.decode(ChampionCompareRequest.self)
+            return try await compareHandler(request: request,
+                                            serverRegion: requestBody.serverRegion,
+                                            championId: requestBody.championId,
+                                            summonerNames: requestBody.summonerNames)
+        } catch {
+            throw Abort(.badRequest)
+        }
     }
 }
 
@@ -21,21 +35,49 @@ func routes(_ app: Application) throws {
 func summonerChampionMasteriesHandler(request: Request,
                                       serverRegion: ServerRegion,
                                       summonerName: String) async throws -> [ChampionMastery] {
-        let champions = try await fetchChampions(request: request)
-        let summoner = try await fetchSummoner(serverRegion: serverRegion, 
+    let champions = try await fetchChampions(request: request)
+    let summoner = try await fetchSummoner(serverRegion: serverRegion,
+                                           summonerName: summonerName,
+                                           request: request)
+    let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
+                                                     puuid: summoner.puuid,
+                                                     request: request)
+    
+    let championMasteries: [ChampionMastery] = try masteries.map { mastery in
+        guard let champion: ChampionDTO = champions.data[mastery.championId] else {
+            throw Abort(.internalServerError)
+        }
+        return ChampionMastery(champion: champion, championMastery: mastery)
+    }
+    return championMasteries
+}
+
+// MARK: Request handlers
+
+func compareHandler(request: Request,
+                    serverRegion: ServerRegion,
+                    championId: ChampionID,
+                    summonerNames: [String]) async throws -> CompareResponse {
+    let champions = try await fetchChampions(request: request)
+    guard let targetChampion = champions.data[championId] else {
+        throw Abort(.internalServerError)
+    }
+    
+    var results: [SummonerMastery] = []
+    for summonerName in summonerNames {
+        let summoner = try await fetchSummoner(serverRegion: serverRegion,
                                                summonerName: summonerName,
                                                request: request)
-        let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
-                                                         puuid: summoner.puuid,
-                                                         request: request)
-        
-        let championMasteries: [ChampionMastery] = try masteries.map { mastery in
-            guard let champion: ChampionDTO = champions.data[mastery.championId] else {
-                throw Abort(.internalServerError)
-            }
-            return ChampionMastery(champion: champion, championMastery: mastery)
-        }
-        return championMasteries
+        let mastery = try await fetchChampionMastery(serverRegion: serverRegion,
+                                                     puuid: summoner.puuid,
+                                                     championId: championId,
+                                                     request: request)
+        let result = SummonerMastery(summoner: summoner, mastery: mastery)
+        results.append(result)
+    }
+    let championInfo = ChampionInfo(champion: targetChampion)
+    let response = CompareResponse(championInfo: championInfo, results: results)
+    return response
 }
 
 // MARK: Riot APIs
@@ -86,6 +128,31 @@ func fetchChampionMasteries(serverRegion: ServerRegion,
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .millisecondsSince1970
     let json = try response.content.decode([ChampionMasteryDTO].self, using: decoder)
+    return json
+}
+
+/// See: https://developer.riotgames.com/apis#champion-mastery-v4/GET_getChampionMasteryByPUUID
+func fetchChampionMastery(serverRegion: ServerRegion,
+                          puuid: String,
+                          championId: ChampionID,
+                          request: Request) async throws -> ChampionMasteryDTO {
+    guard let riotToken = Environment.get("X-Riot-Token") else {
+        throw Abort(.internalServerError)
+    }
+    let baseURL = baseURL(for: serverRegion)
+    let requestURI: URI = "\(baseURL)/lol/champion-mastery/v4/champion-masteries/by-puuid/\(puuid)/by-champion/\(championId)"
+    let response = try await request.client.get(requestURI) { req in
+        req.headers.add(name: "X-Riot-Token", value: riotToken)
+        req.headers.add(name: "Accept-Language", value: "en-US,en;q=0.7")
+        req.headers.replaceOrAdd(name: "Accept", value: "application/json;charset=utf-8")
+        req.headers.replaceOrAdd(name: "Content-Type", value: "application/json;charset=utf-8")
+    }
+    guard response.status.isValid() else {
+        throw Abort(response.status)
+    }
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .millisecondsSince1970
+    let json = try response.content.decode(ChampionMasteryDTO.self, using: decoder)
     return json
 }
 

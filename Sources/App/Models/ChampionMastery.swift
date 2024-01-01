@@ -34,8 +34,8 @@ struct ChampionMastery: Content {
                                                                        championLevel: championMastery.championLevel)
         self.lastTimePlayed = championMastery.lastPlayTime
         self.tags = champion.tags
-        self.imageURL = Self.imageURL(for: champion.imageURLFormattedName)
-        self.splashImageURL = Self.splashImageURL(for: champion.imageURLFormattedName)
+        self.imageURL = champion.imageURL
+        self.splashImageURL = champion.splashImageURL
     }
     
     private static func calculateTokensEarnedOutOfMax(tokensEarned: Int,
@@ -49,13 +49,5 @@ struct ChampionMastery: Content {
         else {
             return "N/A"
         }
-    }
-    
-    private static func imageURL(for name: String) -> URL {
-        return URL(string: "https://ddragon.leagueoflegends.com/cdn/13.24.1/img/champion/\(name).png")!
-    }
-    
-    private static func splashImageURL(for name: String) -> URL {
-        return URL(string: "https://ddragon.leagueoflegends.com/cdn/img/champion/loading/\(name)_0.jpg")!
     }
 }
