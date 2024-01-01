@@ -6,9 +6,8 @@
 //
 
 import Foundation
-import VaporRouting
 
-enum ServerRegion: String, Codable {
+enum ServerRegion: String, Codable, CaseIterable {
     case brazil = "br1"
     case europeNorthEast = "eun1"
     case europeWest = "euw1"

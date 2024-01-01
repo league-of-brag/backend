@@ -1,64 +1,29 @@
 import Vapor
-import VaporRouting
 
-enum SiteRoute {
-    case region(RegionRoute)
-}
+// MARK: Routes
 
-enum RegionRoute {
-    case user(UserRoute)
-}
-
-enum UserRoute {
-    case championMastery
-//    case top100
-//    case levelUp
-}
-
-let userRouter = OneOf {
-    Route(.case(UserRoute.championMastery)) {
-        Path { "champion-mastery" }
+func routes(_ app: Application) throws {
+    app.get("region", ":serverRegion", "summoner", ":summonerName", "champion-masteries") { req -> [ChampionMastery] in
+        guard
+            let serverRegion = ServerRegion(rawValue: req.parameters.get("serverRegion", as: String.self) ?? ""),
+            let summonerName: String = req.parameters.get("summonerName", as: String.self)
+        else {
+            throw Abort(.badRequest)
+        }
+        return try await summonerChampionMasteriesHandler(request: req,
+                                                          serverRegion: serverRegion,
+                                                          summonerName: summonerName)
     }
 }
 
-let regionRouter = OneOf {
-    Route(.case(RegionRoute.user)) {
-        Path { "user" }
-        userRouter
-    }
-}
+// MARK: Request handlers
 
-let router = OneOf {
-    Route(.case(SiteRoute.region)) {
-        Path { "region" }
-        regionRouter
-    }
-}
-
-func siteHandler(request: Request,
-                 route: SiteRoute) async throws -> AsyncResponseEncodable {
-    switch route {
-    case .region(let regionRoute):
-        return try await regionHandler(request: request, route: regionRoute)
-    }
-}
-
-func regionHandler(request: Request,
-                 route: RegionRoute) async throws -> AsyncResponseEncodable {
-    switch route {
-    case .user(let userRoute):
-        return try await userHandler(request: request, route: userRoute)
-    }
-}
-
-func userHandler(request: Request,
-                 route: UserRoute) async throws -> AsyncResponseEncodable {
-    switch route {
-    case .championMastery:
+func summonerChampionMasteriesHandler(request: Request,
+                                      serverRegion: ServerRegion,
+                                      summonerName: String) async throws -> [ChampionMastery] {
         let champions = try await fetchChampions(request: request)
-        let serverRegion: ServerRegion = .europeWest
         let summoner = try await fetchSummoner(serverRegion: serverRegion, 
-                                               summonerName: "andygägä",
+                                               summonerName: summonerName,
                                                request: request)
         let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
                                                          puuid: summoner.puuid,
@@ -71,7 +36,6 @@ func userHandler(request: Request,
             return ChampionMastery(champion: champion, championMastery: mastery)
         }
         return championMasteries
-    }
 }
 
 // MARK: Riot APIs

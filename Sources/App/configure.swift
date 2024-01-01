@@ -1,5 +1,4 @@
 import Vapor
-import VaporRouting
 
 // configures your application
 public func configure(_ app: Application) async throws {
@@ -7,24 +6,7 @@ public func configure(_ app: Application) async throws {
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
     // register routes
-    app.router = router
-      .baseURL("http://127.0.0.1:8080")
-      .eraseToAnyParserPrinter()
-
-    app.mount(app.router, use: siteHandler)
+    try routes(app)
 }
 
-enum SiteRouterKey: StorageKey {
-  typealias Value = AnyParserPrinter<URLRequestData, SiteRoute>
-}
 
-extension Application {
-  var router: SiteRouterKey.Value {
-    get {
-      self.storage[SiteRouterKey.self]!
-    }
-    set {
-      self.storage[SiteRouterKey.self] = newValue
-    }
-  }
-}
