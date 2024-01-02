@@ -72,19 +72,20 @@ func championCompareHandler(request: Request,
     guard let targetChampion = champions.data[championId] else {
         throw Abort(.internalServerError)
     }
-    
-    var results: [SummonerMastery] = []
-#warning("This should be run in parallel")
-    for summonerName in summonerNames {
-        let summoner = try await fetchSummoner(serverRegion: serverRegion,
-                                               summonerName: summonerName,
-                                               request: request)
-        let mastery = try await fetchChampionMastery(serverRegion: serverRegion,
-                                                     puuid: summoner.puuid,
-                                                     championId: championId,
-                                                     request: request)
-        let result = SummonerMastery(summoner: summoner, mastery: mastery)
-        results.append(result)
+    let results = try await withThrowingTaskGroup(of: SummonerMastery.self) { taskGroup in
+        for summonerName in summonerNames {
+            taskGroup.addTask {
+                return try await fetchSummonerChampionMastery(request: request,
+                                                              serverRegion: serverRegion,
+                                                              summonerName: summonerName,
+                                                              championId: championId)
+            }
+        }
+        var results: [SummonerMastery] = []
+        for try await result in taskGroup {
+            results.append(result)
+        }
+        return results
     }
     let championInfo = ChampionInfo(champion: targetChampion)
     let response = ChampionCompareResponse(championInfo: championInfo, results: results)
@@ -102,23 +103,58 @@ func championClassCompareHandler(request: Request,
         throw Abort(.internalServerError)
     }
     
-    var results: [SummonerMasteries] = []
-#warning("This should be run in parallel")
-    for summonerName in summonerNames {
-        let summoner = try await fetchSummoner(serverRegion: serverRegion,
-                                               summonerName: summonerName,
-                                               request: request)
-        let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
-                                                         puuid: summoner.puuid,
-                                                         request: request)
-        let filteredMasteries = masteries.filter { masteryChampion in
-            return filteredChampions.contains { $0.key == masteryChampion.championId }
+    let results = try await withThrowingTaskGroup(of: SummonerMasteries.self) { taskGroup in
+        for summonerName in summonerNames {
+            taskGroup.addTask {
+                return try await fetchSummonerChampionMasteries(request: request,
+                                                                serverRegion: serverRegion,
+                                                                filteredChampions: filteredChampions,
+                                                                summonerName: summonerName)
+            }
         }
-        let result = SummonerMasteries(summoner: summoner, masteries: filteredMasteries)
-        results.append(result)
+        var results: [SummonerMasteries] = []
+        for try await result in taskGroup {
+            results.append(result)
+        }
+        return results
     }
+    
     let response = ChampionClassCompareResponse(championClass: championClass, results: results)
     return response
+}
+
+func fetchSummonerChampionMastery(request: Request,
+                                  serverRegion: ServerRegion,
+                                  summonerName: String,
+                                  championId: ChampionID) async throws -> SummonerMastery {
+    let summoner = try await fetchSummoner(serverRegion: serverRegion,
+                                           summonerName: summonerName,
+                                           request: request)
+    let mastery = try await fetchChampionMastery(serverRegion: serverRegion,
+                                                 puuid: summoner.puuid,
+                                                 championId: championId,
+                                                 request: request)
+    return SummonerMastery(summoner: summoner, mastery: mastery)
+}
+
+
+
+// MARK: Middleware Riot APIs
+
+func fetchSummonerChampionMasteries(request: Request,
+                                    serverRegion: ServerRegion,
+                                    filteredChampions: [ChampionDTO],
+                                    summonerName: String) async throws -> SummonerMasteries {
+    let summoner = try await fetchSummoner(serverRegion: serverRegion,
+                                           summonerName: summonerName,
+                                           request: request)
+    let masteries = try await fetchChampionMasteries(serverRegion: serverRegion,
+                                                     puuid: summoner.puuid,
+                                                     request: request)
+    let filteredMasteries = masteries.filter { masteryChampion in
+        return filteredChampions.contains { $0.key == masteryChampion.championId }
+    }
+    return SummonerMasteries(summoner: summoner, masteries: filteredMasteries)
 }
 
 // MARK: Riot APIs
