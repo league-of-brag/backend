@@ -9,7 +9,7 @@ let package = Package(
     dependencies: [
         // 💧 A server-side Swift web framework.
         .package(url: "https://github.com/vapor/vapor.git", from: "4.89.0"),
-        .package(url: "https://github.com/league-of-brag/lol-api-client", branch: "feature/base-spm-package")
+        .package(url: "https://github.com/league-of-brag/lol-api-client", from: "0.1.0")
     ],
     targets: [
         .executableTarget(

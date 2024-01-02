@@ -32,8 +32,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/league-of-brag/lol-api-client",
       "state" : {
-        "branch" : "feature/base-spm-package",
-        "revision" : "ae32f22e109920d65bcbe3518c5d833a59f499c7"
+        "revision" : "cc95e47f880baf0d972b2b87eb94d441ea6f16e0",
+        "version" : "0.1.0"
       }
     },
     {
