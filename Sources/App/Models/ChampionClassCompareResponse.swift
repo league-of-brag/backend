@@ -7,6 +7,7 @@
 
 import Foundation
 import Vapor
+import LOLAPIClient
 
 struct ChampionClassCompareResponse: Content {
     let championClass: ChampionClass

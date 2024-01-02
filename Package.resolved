@@ -28,6 +28,15 @@
       }
     },
     {
+      "identity" : "lol-api-client",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/league-of-brag/lol-api-client",
+      "state" : {
+        "branch" : "feature/base-spm-package",
+        "revision" : "ae32f22e109920d65bcbe3518c5d833a59f499c7"
+      }
+    },
+    {
       "identity" : "multipart-kit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/multipart-kit.git",

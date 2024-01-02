@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LOLAPIClient
 
 struct ChampionCompareRequest: Codable {
     let serverRegion: ServerRegion
