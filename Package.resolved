@@ -28,6 +28,15 @@
       }
     },
     {
+      "identity" : "lol-api-client",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/league-of-brag/lol-api-client",
+      "state" : {
+        "revision" : "cc95e47f880baf0d972b2b87eb94d441ea6f16e0",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "multipart-kit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/multipart-kit.git",
